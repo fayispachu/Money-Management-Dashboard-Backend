@@ -1,5 +1,6 @@
 import Wallet from "../models/Wallet.js";
 import User from "../models/User.js";
+import Bank from "../models/Bank.js";
 import Transaction from "../models/Transaction.js";
 
 // Create Wallet
@@ -19,7 +20,7 @@ export const createWallet = async (req, res) => {
   }
 };
 
-// Get all wallets for a user
+// Get Wallets
 export const getUserWallets = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -30,11 +31,12 @@ export const getUserWallets = async (req, res) => {
   }
 };
 
-// Deposit to wallet
+// Deposit to Wallet
 export const depositToWallet = async (req, res) => {
   try {
     const { walletId, amount } = req.body;
-    if (!amount || amount <= 0) return res.status(400).json({ message: "Invalid amount" });
+    if (!amount || amount <= 0)
+      return res.status(400).json({ message: "Invalid amount" });
 
     const wallet = await Wallet.findById(walletId);
     if (!wallet) return res.status(404).json({ message: "Wallet not found" });
@@ -58,24 +60,32 @@ export const depositToWallet = async (req, res) => {
   }
 };
 
-// Withdraw from wallet
+// Withdraw from Wallet
 export const withdrawFromWallet = async (req, res) => {
   try {
     const { walletId, amount } = req.body;
-    if (!amount || amount <= 0) return res.status(400).json({ message: "Invalid amount" });
+    console.log("Withdraw request:", req.body);
+
+    if (!walletId) return res.status(400).json({ message: "Wallet ID required" });
+
+    const withdrawAmount = Number(amount);
+    if (isNaN(withdrawAmount) || withdrawAmount <= 0)
+      return res.status(400).json({ message: "Invalid amount" });
 
     const wallet = await Wallet.findById(walletId);
     if (!wallet) return res.status(404).json({ message: "Wallet not found" });
-    if (wallet.balance < amount) return res.status(400).json({ message: "Insufficient balance" });
 
-    wallet.balance -= amount;
+    if (wallet.balance < withdrawAmount)
+      return res.status(400).json({ message: "Insufficient balance" });
+
+    wallet.balance -= withdrawAmount;
     await wallet.save();
 
     await Transaction.create({
       wallet: wallet._id,
       user: wallet.user,
       type: "withdraw",
-      amount,
+      amount: withdrawAmount,
       currency: wallet.currency,
       title: `Withdrawal from ${wallet.name}`,
       status: "Success",
@@ -83,40 +93,44 @@ export const withdrawFromWallet = async (req, res) => {
 
     res.status(200).json({ message: "Withdrawal successful", wallet });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("WithdrawFromWallet Error:", err);
+    res.status(500).json({ message: "Server error: " + err.message });
   }
 };
 
-// Withdraw to bank account
 export const withdrawToBank = async (req, res) => {
-  try {
-    const { walletId, amount, bankAccountId } = req.body;
+  const { walletId, bankId, amount } = req.body;
+  const numericAmount = Number(amount);
 
-    if (!amount || amount <= 0) return res.status(400).json({ message: "Invalid amount" });
+  if (!walletId || !bankId || !numericAmount || numericAmount <= 0)
+    return res.status(400).json({ message: "Invalid input" });
 
-    const wallet = await Wallet.findById(walletId);
-    if (!wallet) return res.status(404).json({ message: "Wallet not found" });
-    if (wallet.balance < amount) return res.status(400).json({ message: "Insufficient balance" });
+  const wallet = await Wallet.findById(walletId);
+  if (!wallet) return res.status(404).json({ message: "Wallet not found" });
+  if (wallet.balance < numericAmount)
+    return res.status(400).json({ message: "Insufficient balance" });
 
-    const user = await User.findById(wallet.user);
-    const bankAccount = user.bankAccounts.id(bankAccountId);
-    if (!bankAccount) return res.status(404).json({ message: "Bank account not found" });
+  const bank = await Bank.findById(bankId);
+  console.log(bank ,"bank");
+  
+  if (!bank) return res.status(404).json({ message: "Bank not found" });
 
-    wallet.balance -= amount;
-    await wallet.save();
+  wallet.balance -= numericAmount;
+  bank.balance += numericAmount;
 
-    await Transaction.create({
-      wallet: wallet._id,
-      user: wallet.user,
-      type: "bank_withdraw",
-      amount,
-      currency: wallet.currency,
-      title: `Withdraw to ${bankAccount.bankName} (${bankAccount.accountNumber})`,
-      status: "Success",
-    });
+  await wallet.save();
+  await bank.save();
 
-    res.status(200).json({ message: "Withdrawal to bank successful", wallet });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  await Transaction.create({
+    wallet: wallet._id,
+    bank: bank._id,
+    user: wallet.user,
+    type: "withdraw_to_bank",
+    amount: numericAmount,
+    currency: wallet.currency,
+    status: "Success",
+    title: `Withdrawal from ${wallet.name} to ${bank.name}`,
+  });
+
+  res.status(200).json({ message: "Withdrawal successful", wallet });
 };

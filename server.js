@@ -12,7 +12,7 @@ import BankRouter from "./routes/bank.route.js";
 dotenv.config();
 
 const app = express();
-
+app.use(express.json());
 // Connect Database
 connectDB();
 

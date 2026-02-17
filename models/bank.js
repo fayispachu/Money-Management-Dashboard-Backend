@@ -7,7 +7,7 @@ const bankSchema = new mongoose.Schema(
     accountNumber: { type: String, required: true },
     ifsc: { type: String, required: true },
     balance: { type: Number, default: 0 }, 
-    active: { type: Boolean, default: false },
+    active: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
