@@ -16,10 +16,6 @@ const app = express();
 // Connect Database
 connectDB();
 
-/* ========================
-   Middleware
-======================== */
-
 app.use(helmet());
 
 const limiter = rateLimit({
@@ -30,16 +26,13 @@ app.use(limiter);
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "https://trustmoneywallet.vercel.app"],
     credentials: true,
   })
 );
 
 app.use(express.json());
 
-/* ========================
-   Routes
-======================== */
 
 app.get("/", (req, res) => {
   res.json({ message: "Wallet API running..." });
@@ -50,9 +43,6 @@ app.use("/api/user", UserRouter);
 app.use("/api/wallets", WalletRouter);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/banks", BankRouter);
-/* ========================
-   Server Start
-======================== */
 
 const PORT = process.env.PORT || 5000;
 
