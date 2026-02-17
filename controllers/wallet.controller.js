@@ -1,7 +1,7 @@
 import Wallet from "../models/Wallet.js";
 import User from "../models/User.js";
-import Bank from "../models/Bank.js";
 import Transaction from "../models/Transaction.js";
+import Bank from "../models/bank.js";
 
 // Create Wallet
 export const createWallet = async (req, res) => {

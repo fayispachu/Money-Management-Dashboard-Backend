@@ -1,4 +1,4 @@
-import Bank from "../models/Bank.js";
+import Bank from "../models/bank.js";
 
 // Add Bank
 export const addBankAccount = async (req, res) => {
